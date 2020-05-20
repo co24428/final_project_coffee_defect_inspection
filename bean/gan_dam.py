@@ -4,6 +4,7 @@ import numpy as np
 from scipy import fft, fftpack
 import scipy.stats as st
 from math import pi as PI
+import cv2
 
 def createNormalizedGaussian2d(x_start, x_end, y_start, y_end, std ):
   A = (1/(2*PI*std**2))
@@ -34,7 +35,8 @@ import pickle
 
 # 3400 = 40*85
 # 3400 = 50*68
-batch_size = 40
+batch_size = 10
+epoch = 100
 
 
 
@@ -67,12 +69,21 @@ import sys
 
 
 dataPath = "./data"
-normal_imgs = glob.glob(os.path.join(dataPath+"/normal_processed_data",'*.jpg'))
-broken_imgs = glob.glob(os.path.join(dataPath+"/broken_processed_data",'*.jpg'))
-imgs = normal_imgs + broken_imgs
-# imgs = normal_imgs
+# normal_imgs = glob.glob(os.path.join(dataPath+"/normal_sec_processed_data",'*.jpg'))
+##################
+normal_imgs = glob.glob(os.path.join(dataPath+"/normal_binary_data",'*.jpg'))
+# normal_imgs = glob.glob(os.path.join(dataPath+"/broken_binary_data",'*.jpg'))
+##################
+# broken_imgs = glob.glob(os.path.join(dataPath+"/broken_sec_processed_data",'*.jpg'))
+# test = glob.glob(os.path.join(dataPath+"/test",'*.jpg'))
+# imgs = normal_imgs + broken_imgs
+imgs = normal_imgs
+# imgs = test
+# imgs = broken_imgs
 normal_imgs_len = len(normal_imgs)
-broken_imgs_len = len(broken_imgs)
+# print(normal_imgs[0])
+# broken_imgs_len = len(broken_imgs)
+# test_len = len(test)
 
 """
 # 코드 정리하기!!!!!
@@ -83,27 +94,79 @@ import numpy as np
 import sklearn
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
-temp = Image.open(imgs[0])
-temp2 = torch.LongTensor(np.array(temp))
-temp2.shape
-
 # y_train = np.array([0.]*26 + [1.]*26)
 # y_train = np.array([0.]*img_num)
-y_train = np.array([0.]*normal_imgs_len + [1.]*broken_imgs_len)
+# y_train = np.array([0.]*normal_imgs_len + [1.]*broken_imgs_len)
+y_train = np.array([1.]*normal_imgs_len)
+# y_train = np.array([1.]*test_len)
 y_train = torch.LongTensor(y_train)
 
 img_arr = list()
 scaler = MinMaxScaler()
 
-custom_guss = createNormalizedGaussian2d(-32,31 , -32, 31, 10)[3]
+custom_guss = createNormalizedGaussian2d(-32,31 , -32, 31, 20)[3]
 
+x = 0
+limit = 100
 for img in imgs:
-  temp = Image.open(img)
-  temp = temp.convert("L")
-  temp2 = np.array(temp)
-  temp2 =  scaler.fit_transform(np.array(temp))
-  img_arr.append(temp2)
+  # if x < limit:
+  #   x += 1
+  #   continue
+  # print(img)
+  temp = ((cv2.imread(img,cv2.IMREAD_GRAYSCALE)/255) *2) -1
 
+  # print("="*50)
+  # print(temp.min())
+  # print("="*50)
+  # break
+
+  # cv2.imshow("temp",temp)
+  # temp1 = cv2.cvtColor(temp, cv2.COLOR_BGR2GRAY)
+  # cv2.imshow("temp1", temp1)
+
+  # temp2 = scaler.fit_transform(temp1)
+  # temp2 = (temp1 *custom_guss) / temp1.max()
+
+  # cv2.imshow("temp2", temp2)
+
+  # cv2.waitKey(0)
+  # cv2.destroyAllWindows()
+  img_arr.append(temp)
+
+  # break
+############################################################ 임시코드 ################
+  # temp = Image.open(img)
+  ########################
+#   temp2 = np.array(temp)
+#   print(img)
+#   print(temp2.shape)
+#   plt.figure()
+#   plt.imshow(temp2)
+#   plt.show()
+#   break
+
+###############################
+  # temp2 = np.array(temp)
+  # temp2 = cv2.cvtColor(temp2, cv2.COLOR_BGR2GRAY)
+  # temp2 = np.ravel(temp2)
+  # temp2 = scaler.fit_transform(np.array(temp))
+  # temp2 = temp2.reshape(64,64)
+
+  # fig = plt.figure()
+  # ax1 = fig.add_subplot(1,4,1)
+  # ax2 = fig.add_subplot(1,4,2)
+  # ax3 = fig.add_subplot(1,4,3)
+  # ax4 = fig.add_subplot(1,4,4)
+  # ax1.imshow(temp2[:,:,0])
+  # ax2.imshow(temp2[:,:,1])
+  # ax3.imshow(temp2[:,:,2])
+  # ax4.imshow(temp2)
+  
+  # plt.show()
+  # break
+############################################################ 임시코드 ################
+  # img_arr.append(temp2)
+  
 # for img in imgs:
 #   temp = Image.open(img)
 #   temp = temp.convert("L")
@@ -140,16 +203,16 @@ class Generator(nn.Module):
     def __init__(self):
       super(Generator, self).__init__()
       self.main = nn.Sequential(
-        nn.Linear(in_features=30*30, out_features=1024),
+        nn.Linear(in_features=64*64, out_features=2048),
+        nn.LeakyReLU(0.1),
+        # nn.Dropout(0.1),
+        nn.Linear(in_features=2048, out_features=1024),
         nn.LeakyReLU(0.1),
         # nn.Dropout(0.1),
         nn.Linear(in_features=1024, out_features=2048),
         nn.LeakyReLU(0.1),
         # nn.Dropout(0.1),
-        nn.Linear(in_features=2048, out_features=3072),
-        nn.LeakyReLU(0.1),
-        # nn.Dropout(0.1),
-        nn.Linear(in_features=3072, out_features=64*64),
+        nn.Linear(in_features=2048, out_features=64*64),
         nn.Tanh())
     
   # (batch_size x 100) 크기의 랜덤 벡터를 받아 
@@ -168,13 +231,13 @@ class Discriminator(nn.Module):
     super(Discriminator, self).__init__()
     self.main = nn.Sequential(
       nn.Linear(in_features=64*64, out_features=1024),
-      nn.LeakyReLU(0.3, ),
+      nn.LeakyReLU(0.4, ),
       nn.Dropout(0.6),
       nn.Linear(in_features=1024, out_features=512),
-      nn.LeakyReLU(0.3, ),
+      nn.LeakyReLU(0.4, ),
       nn.Dropout(0.6),
       nn.Linear(in_features=512, out_features=256),
-      nn.LeakyReLU(0.3, ),
+      nn.LeakyReLU(0.4, ),
       nn.Dropout(0.6),
       nn.Linear(in_features=256, out_features=1),
       nn.Sigmoid())
@@ -268,7 +331,7 @@ if leave_log:
     train_hist['G_losses'] = []
     generated_images = []
     
-z_fixed = Variable(torch.randn(5 * 5, 30*30), volatile=True)
+z_fixed = Variable(torch.randn(5 * 5, 64*64), volatile=True)
 if use_gpu:
     z_fixed = z_fixed.cuda()
 
@@ -320,7 +383,7 @@ from random import *
 
 
 # 데이터셋을 100번 돌며 학습한다.
-for epoch in range(100):
+for epoch in range(epoch):
     
     if leave_log:
         D_losses = []
@@ -351,12 +414,12 @@ for epoch in range(100):
         D_loss_real = criterion(D_result_from_real, target_real)
 
         # 생성자에 입력으로 줄 랜덤 벡터 z를 만든다.
-        # z = Variable(torch.randn((batch_size, 900)))
-        z = np.array(list(map(lambda x: x*uniform(0,1), [1]*900)))
-        z = z * test
-        z = torch.FloatTensor(z)
-        z = z.unsqueeze(0)
-        z = torch.cat([z]*batch_size, dim=0)
+        z = Variable(torch.randn((batch_size, 64*64)))
+        # z = np.array(list(map(lambda x: x*uniform(0,1), [1]*900)))
+        # z = z * test
+        # z = torch.FloatTensor(z)
+        # z = z.unsqueeze(0)
+        # z = torch.cat([z]*batch_size, dim=0)
 
         if use_gpu:
             z = z.cuda()
@@ -370,7 +433,8 @@ for epoch in range(100):
         D_loss_fake = criterion(D_result_from_fake, target_fake)
         
         # 구분자의 loss는 두 문제에서 계산된 loss의 합이다.
-        D_loss = D_loss_real + D_loss_fake
+        D_loss = (D_loss_real + D_loss_fake) * 0.4
+        
         
         # 구분자의 매개 변수의 미분값을 0으로 초기화한다.
         D.zero_grad()
@@ -388,12 +452,12 @@ for epoch in range(100):
         ### 생성자 학습시키기
         
         # 생성자에 입력으로 줄 랜덤 벡터 z를 만든다.
-        # z = Variable(torch.randn((batch_size, 900)))
-        z = np.array(list(map(lambda x: x*uniform(0,1), [1]*900)))
-        z = z * test
-        z = torch.FloatTensor(z)
-        z = z.unsqueeze(0)
-        z = torch.cat([z]*batch_size, dim=0)
+        z = Variable(torch.randn((batch_size, 64*64)))
+        # z = np.array(list(map(lambda x: x*uniform(0,1), [1]*900)))
+        # z = z * test
+        # z = torch.FloatTensor(z)
+        # z = z.unsqueeze(0)
+        # z = torch.cat([z]*batch_size, dim=0)
         
         if use_gpu:
             z = z.cuda()
