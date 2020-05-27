@@ -35,7 +35,7 @@ import pickle
 
 # 3400 = 40*85
 # 3400 = 50*68
-batch_size = 10
+batch_size = 30
 epoch = 100
 
 
@@ -71,7 +71,10 @@ import sys
 dataPath = "./data"
 # normal_imgs = glob.glob(os.path.join(dataPath+"/normal_sec_processed_data",'*.jpg'))
 ##################
-normal_imgs = glob.glob(os.path.join(dataPath+"/normal_binary_data",'*.jpg'))
+# normal_imgs = glob.glob(os.path.join(dataPath+"/normal_rotated_binary_data",'*.jpg'))
+normal_imgs = glob.glob(os.path.join(dataPath+"/broken_rotated_binary_data",'*.jpg'))
+##################
+# normal_imgs = glob.glob(os.path.join(dataPath+"/normal_binary_data",'*.jpg'))
 # normal_imgs = glob.glob(os.path.join(dataPath+"/broken_binary_data",'*.jpg'))
 ##################
 # broken_imgs = glob.glob(os.path.join(dataPath+"/broken_sec_processed_data",'*.jpg'))
@@ -429,11 +432,11 @@ for epoch in range(epoch):
         
         # 생성자가 만든 가짜 이미지를 구분자에 넣는다.
         D_result_from_fake = D(fake_data)
-        # 구분자의 출력값이 정답지인 0에서 멀수록 lo`ss가 높아진다.
+        # 구분자의 출력값이 정답지인 0에서 멀수록 loss가 높아진다.
         D_loss_fake = criterion(D_result_from_fake, target_fake)
         
         # 구분자의 loss는 두 문제에서 계산된 loss의 합이다.
-        D_loss = (D_loss_real + D_loss_fake) * 0.4
+        D_loss = (D_loss_real + D_loss_fake) * 0.8
         
         
         # 구분자의 매개 변수의 미분값을 0으로 초기화한다.
